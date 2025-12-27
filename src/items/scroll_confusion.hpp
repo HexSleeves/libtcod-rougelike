@@ -2,6 +2,7 @@
 
 #include <fmt/core.h>
 
+#include "../globals.hpp"
 #include "../item_tools.hpp"
 #include "../states/pick_tile.hpp"
 #include "../types/actor.hpp"
@@ -17,8 +18,9 @@ struct ConfusionScroll : public Item {
     return {'#', tcod::ColorRGB{207, 63, 255}};
   }
 
-  [[nodiscard]] action::Result use_item(World& world, Actor& actor) override {
-    auto on_pick = [&world, &actor, this](Position target_pos) -> state::Result {
+  [[nodiscard]] action::Result use_item(GameContext& context, Actor& actor) override {
+    auto on_pick = [&actor, this](GameContext& ctx, Position target_pos) -> state::Result {
+      auto& world = *ctx.world;
       if (const auto& map = world.active_map(); !map.visible.in_bounds(target_pos) || !map.visible.at(target_pos)) {
         world.log.append("You can't see anything there!");
         return state::Reset{};
@@ -37,13 +39,14 @@ struct ConfusionScroll : public Item {
       return state::EndTurn{};
     };
 
+    auto& world = *context.world;
     const auto& map = world.active_map();
     const auto is_not_self_and_visible = [&actor, &map](const Actor& other) {
       return other.id != actor.id && map.visible.at(other.pos);
     };
 
     const auto* nearest_visible_enemy = get_nearest_actor(world, actor.pos, is_not_self_and_visible);
-    g_controller.cursor = nearest_visible_enemy ? nearest_visible_enemy->pos : actor.pos;
-    return action::Poll{std::make_unique<state::PickTile>(std::move(g_state), on_pick)};
+    context.controller.cursor = nearest_visible_enemy ? nearest_visible_enemy->pos : actor.pos;
+    return action::Poll{std::make_unique<state::PickTile>(std::move(context.state), on_pick)};
   };
 };

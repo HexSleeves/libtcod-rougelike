@@ -1,12 +1,14 @@
 #pragma once
 #include <fmt/core.h>
 
+#include "../globals.hpp"
 #include "base.hpp"
 
 namespace action {
 class Pickup : public Action {
  public:
-  [[nodiscard]] Result perform(World& world, Actor& actor) override {
+  [[nodiscard]] Result perform(GameContext& context, Actor& actor) override {
+    auto& world = *context.world;
     Map& map = world.active_map();
     auto [first, last] = map.items.equal_range(actor.pos);
     if (first == map.items.end()) {

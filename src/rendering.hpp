@@ -3,6 +3,7 @@
 #include <SDL3/SDL.h>
 #include <fmt/core.h>
 #include <fmt/format.h>
+#include <fmt/ranges.h>
 
 #include "constants.hpp"
 #include "globals.hpp"
@@ -28,57 +29,64 @@ inline void render_map(tcod::Console& console, const Map& map, bool show_all = f
     }
   }
 }
-inline void render_map(tcod::Console& console, const World& world) {
-  const auto& map = world.active_map();
-  render_map(console, map);
+inline void render_map(GameContext& context) {
+  const auto& map = context.world->active_map();
+  render_map(context.console, map);
 
-  const auto can_draw = [&map, &console](Position map_pos) {
+  const auto can_draw = [&](Position map_pos) {
     if (!map.visible.in_bounds(map_pos)) return false;
     if (!map.visible.at(map_pos)) return false;
-    if (!console.in_bounds(map_pos)) return false;
+    if (!context.console.in_bounds(map_pos)) return false;
     return true;
   };
 
   for (const auto& [fixture_pos, fixture] : map.fixtures) {
     if (!can_draw(fixture_pos)) continue;
-    console.at(fixture_pos).ch = fixture.ch;
-    console.at(fixture_pos).fg = fixture.fg;
+    context.console.at(fixture_pos).ch = fixture.ch;
+    context.console.at(fixture_pos).fg = fixture.fg;
   }
 
   for (const auto& [item_pos, item] : map.items) {
     if (!can_draw(item_pos)) continue;
     const auto& [item_ch, item_fg] = item->get_graphic();
-    console.at(item_pos).ch = item_ch;
-    console.at(item_pos).fg = item_fg;
+    context.console.at(item_pos).ch = item_ch;
+    context.console.at(item_pos).fg = item_fg;
   }
 
-  with_active_actors(world, [&console, &can_draw](const Actor& actor) {
+  with_active_actors(*context.world, [&](const Actor& actor) {
     if (!can_draw(actor.pos)) return;
-    console.at(actor.pos).ch = actor.ch;
-    console.at(actor.pos).fg = actor.fg;
+    context.console.at(actor.pos).ch = actor.ch;
+    context.console.at(actor.pos).fg = actor.fg;
   });
 
-  if (g_controller.cursor) {
-    const auto& cursor = *g_controller.cursor;
-    if (console.in_bounds(cursor) && map.visible.in_bounds(cursor)) {
-      auto& cursor_tile = console.at(cursor);
+  if (context.controller.cursor) {
+    const auto& cursor = *context.controller.cursor;
+    if (context.console.in_bounds(cursor) && map.visible.in_bounds(cursor)) {
+      auto& cursor_tile = context.console.at(cursor);
       cursor_tile = {cursor_tile.ch, tcod::ColorRGB{0, 0, 0}, tcod::ColorRGB{255, 255, 255}};
     }
   }
 }
-inline void render_map() { render_map(g_console, *g_world); }
+inline void render_map() { /* Removed global overload */ }
 
-inline void render_log(tcod::Console& console, const World& world) {
+inline void render_log(GameContext& context) {
   const int log_x = 22;
-  const int log_width = console.get_width() - log_x;
-  const int log_height = console.get_height() - constants::MAP_HEIGHT;
-  tcod::Console log_console{log_width, log_height};
-  int y = log_console.get_height();
-  for (auto it = world.log.messages.crbegin(); it != world.log.messages.crend(); ++it) {
+  const int log_width = context.console.get_width() - log_x;
+  const int log_height = context.console.get_height() - constants::MAP_HEIGHT;
+
+  // Optimization: Resize log_console only if necessary (initially 0x0)
+  if (context.log_console.get_width() != log_width || context.log_console.get_height() != log_height) {
+    context.log_console = tcod::Console{log_width, log_height};
+  }
+
+  context.log_console.clear();  // Important to clear reused console
+
+  int y = context.log_console.get_height();
+  for (auto it = context.world->log.messages.crbegin(); it != context.world->log.messages.crend(); ++it) {
     const auto& msg = *it;
     auto print_msg = [&](std::string_view text, const tcod::ColorRGB& fg) {
-      y -= tcod::get_height_rect(log_console.get_width(), text);
-      tcod::print_rect(log_console, {0, y, 0, log_console.get_width()}, text, fg, {});
+      y -= tcod::get_height_rect(context.log_console.get_width(), text);
+      tcod::print_rect(context.log_console, {0, y, 0, context.log_console.get_width()}, text, fg, {});
     };
     if (msg.count > 1) {
       print_msg(fmt::format("{} (x{})", msg.text, msg.count), msg.fg);
@@ -87,7 +95,7 @@ inline void render_log(tcod::Console& console, const World& world) {
     }
     if (y < 0) break;
   }
-  tcod::blit(console, log_console, {log_x, 45});
+  tcod::blit(context.console, context.log_console, {log_x, 45});
 }
 
 inline void draw_bar(
@@ -95,60 +103,52 @@ inline void draw_bar(
     int x,
     int y,
     int width,
-    float filled,
-    const tcod::ColorRGB fill_color,
-    const tcod::ColorRGB back_color,
-    std::string_view text = "",
-    const tcod::ColorRGB text_color = constants::WHITE,
-    TCOD_alignment_t alignment = TCOD_LEFT) {
-  const auto bar_width = std::clamp(static_cast<int>(std::round(width * filled)), 0, width);
-  tcod::draw_rect(console, {x, y, width, 1}, 0, {}, back_color);
-  tcod::draw_rect(console, {x, y, bar_width, 1}, 0, {}, fill_color);
-  if (text.size()) tcod::print_rect(console, {x, y, width, 1}, text, text_color, {}, alignment);
+    float fill,
+    const tcod::ColorRGB& fill_color,
+    const tcod::ColorRGB& bg_color,
+    std::string_view label) {
+  const int fill_width = static_cast<int>(fill * width);
+  tcod::draw_rect(console, {x, y, width, 1}, 0, std::nullopt, bg_color);
+  if (fill_width > 0) {
+    tcod::draw_rect(console, {x, y, fill_width, 1}, 0, std::nullopt, fill_color);
+  }
+  tcod::print(console, {x + width / 2, y}, label, tcod::ColorRGB{255, 255, 255}, std::nullopt, TCOD_CENTER);
 }
 
-inline void render_mouse_look([[maybe_unused]] tcod::Console& console, const World& world) {
-  if (!g_controller.cursor) return;
+inline void render_mouse_look(GameContext& context) {
+  if (!context.controller.cursor) return;
 
-  const auto& map = world.active_map();
-  if (!(map.visible.in_bounds(*g_controller.cursor) && map.visible.at(*g_controller.cursor))) return;
+  const auto& map = context.world->active_map();
+  if (!(map.visible.in_bounds(*context.controller.cursor) && map.visible.at(*context.controller.cursor))) return;
 
   auto cursor_desc = std::vector<std::string>{};
-  if (const auto found_fixture = map.fixtures.find(*g_controller.cursor); found_fixture != map.fixtures.end()) {
+  if (const auto found_fixture = map.fixtures.find(*context.controller.cursor); found_fixture != map.fixtures.end()) {
     cursor_desc.emplace_back(found_fixture->second.name);
   }
 
-  with_active_actors(world, [&cursor_desc](const Actor& actor) {
-    if (actor.pos == *g_controller.cursor) {
+  with_active_actors(*context.world, [&](const Actor& actor) {
+    if (actor.pos == *context.controller.cursor) {
       cursor_desc.emplace_back(actor.name);
     }
   });
 
-  /*
-  {
-    const auto items_range = map.items.equal_range(*g_controller.cursor);
-    for (auto it{items_range.first}; it != items_range.second; ++it) {
-      const auto& item = it->second;
-      cursor_desc.emplace_back(fmt::format("{} ({})", item->get_name(), item->count));
-    }
-  }*/
-  // Phase 4: Uncomment when fmt::join is available
-  // tcod::print_rect(
-  //     console,
-  //     {1, 0, console.get_width() - 1, 1},
-  //     fmt::format("{}", fmt::join(cursor_desc, ", ")),
-  //     constants::TEXT_COLOR_DEFAULT,
-  //     {});
-  (void)cursor_desc;  // Suppress unused warning
+  if (!cursor_desc.empty()) {
+    tcod::print(
+        context.console,
+        *context.controller.cursor,
+        fmt::format("{}", fmt::join(cursor_desc, ", ")),
+        tcod::ColorRGB{255, 255, 255},
+        tcod::ColorRGB{0, 0, 0});
+  }
 }
 
-inline void render_gui(tcod::Console& console, const World& world) {
-  const auto& player = world.active_player();
+inline void render_gui(GameContext& context) {
+  const auto& player = context.world->active_player();
   const int hp_x = 1;
   const int hp_y = constants::MAP_HEIGHT + 1;
 
   draw_bar(
-      console,
+      context.console,
       hp_x,
       hp_y,
       20,
@@ -157,7 +157,7 @@ inline void render_gui(tcod::Console& console, const World& world) {
       constants::HP_BAR_BACK,
       fmt::format(" HP: {}/{}", player.stats.hp, player.stats.max_hp));
   draw_bar(
-      console,
+      context.console,
       hp_x,
       hp_y + 1,
       20,
@@ -165,25 +165,22 @@ inline void render_gui(tcod::Console& console, const World& world) {
       constants::XP_BAR_FILL,
       constants::XP_BAR_BACK,
       fmt::format(" XP: {}", player.stats.xp));
-  render_log(console, world);
-  render_mouse_look(console, world);
+  render_log(context);
+  render_mouse_look(context);
 }
 
-inline void render_all(tcod::Console& console, const World& world) {
-  render_map(console, world);
-  render_gui(console, world);
+inline void render_all(GameContext& context) {
+  render_map(context);
+  render_gui(context);
 }
 
-inline void main_redraw() {
-  g_console.clear();
-  if (g_state) g_state->on_draw();
-  g_context.present(g_console);
-}
+// inline void main_redraw() { ... } // Removed
+// inline auto debug_show_map(...) // Needs update if used, or removed
 
-inline auto debug_show_map([[maybe_unused]] const Map& map) -> void {
+inline auto debug_show_map([[maybe_unused]] GameContext& context, [[maybe_unused]] const Map& map) -> void {
 #ifndef NDEBUG
-  render_map(g_console, map, true);
-  g_context.present(g_console);
+  render_map(context.console, map, true);
+  context.context.present(context.console);
   SDL_Delay(100);
 #endif
 }

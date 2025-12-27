@@ -1,18 +1,19 @@
 #pragma once
 #include "../distance.hpp"
+#include "../globals.hpp"
 #include "../pathfinding/astar.hpp"
 #include "../types/position.hpp"
 #include "ai_confused.hpp"
-#include "base.hpp"
 #include "bump.hpp"
 
 namespace action {
 class BasicAI : public Action {
  public:
-  [[nodiscard]] Result perform(World& world, Actor& actor) override {
+  [[nodiscard]] Result perform(GameContext& context, Actor& actor) override {
+    auto& world = *context.world;
     if (actor.stats.confused_turns) {
       --actor.stats.confused_turns;
-      return ConfusedAI{}.perform(world, actor);
+      return ConfusedAI{}.perform(context, actor);
     }
     const Map& map = world.active_map();
     const auto& player = world.active_player();
@@ -32,7 +33,7 @@ class BasicAI : public Action {
         path_.clear();
         return Success{};
       }
-      return Bump(move_dir).perform(world, actor);
+      return Bump(move_dir).perform(context, actor);
     }
     return Success{};
   };

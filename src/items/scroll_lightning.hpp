@@ -3,6 +3,7 @@
 #include <fmt/core.h>
 
 #include "../combat.hpp"
+#include "../globals.hpp"
 #include "../item_tools.hpp"
 #include "../types/actor.hpp"
 #include "../types/item.hpp"
@@ -18,7 +19,8 @@ struct LightningScroll : public Item {
     return {'#', tcod::ColorRGB{255, 255, 63}};
   }
 
-  [[nodiscard]] action::Result use_item(World& world, Actor& actor) override {
+  [[nodiscard]] action::Result use_item(GameContext& context, Actor& actor) override {
+    auto& world = *context.world;
     Map& map = world.active_map();
     const auto is_not_player_and_visible = [&actor, &map](const Actor& other) {
       return other.id != actor.id && map.visible.at(other.pos);

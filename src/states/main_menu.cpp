@@ -14,20 +14,23 @@ MainMenu::MainMenu(int selected)
     : Menu{
           MenuItems{
               {"[N] New Game",
-               []() -> state::Result {
-                 g_world = new_world();
+               [](GameContext& context) -> state::Result {
+                 context.world = new_world();
                  return state::Change{std::make_unique<state::InGame>()};
                },
                SDLK_N},  // SDL3: uppercase key codes
               {"[C] Continue",
-               []() -> state::Result {
-                 g_world = load_world();
-                 if (g_world) return state::Change{std::make_unique<state::InGame>()};
+               [](GameContext& context) -> state::Result {
+                 std::unique_ptr<World> loaded = load_world();
+                 if (loaded) {
+                   context.world = std::move(loaded);
+                   return state::Change{std::make_unique<state::InGame>()};
+                 }
                  return {};
                },
                SDLK_C},  // SDL3: uppercase key codes
 #ifndef __EMSCRIPTEN__
-              {"[Q] Exit", []() -> state::Result { return Quit{}; }, SDLK_Q},  // SDL3: uppercase key codes
+              {"[Q] Exit", [](GameContext&) -> state::Result { return Quit{}; }, SDLK_Q},  // SDL3: uppercase key codes
 #endif
           },
           selected} {

@@ -12,14 +12,14 @@ class PickTileAreaOfEffect : public PickTile {
   PickTileAreaOfEffect(std::unique_ptr<State> parent, const PickFunction& on_pick, int radius_squared)
       : PickTile{std::move(parent), on_pick}, radius_squared_{radius_squared} {};
 
-  auto on_draw() -> void override {
-    render_all(g_console, *g_world);
-    if (!g_controller.cursor) return;
-    const auto& map = g_world->active_map();
-    with_indexes(map, [this, pos = *g_controller.cursor](int x, int y) {
+  auto on_draw(GameContext& context) -> void override {
+    render_all(context);
+    if (!context.controller.cursor) return;
+    const auto& map = context.world->active_map();
+    with_indexes(map, [this, &context, pos = *context.controller.cursor](int x, int y) {
       if (euclidean_squared(Position{x, y} - pos) >= radius_squared_) return;
-      if (!g_console.in_bounds({x, y})) return;
-      auto& tile = g_console.at({x, y});
+      if (!context.console.in_bounds({x, y})) return;
+      auto& tile = context.console.at({x, y});
       tile = {tile.ch, tcod::ColorRGB{0, 0, 0}, tcod::ColorRGB{255, 255, 255}};
     });
   }

@@ -11,11 +11,6 @@
 // Phase 1: Core types
 #include "constants.hpp"
 #include "errors.hpp"
-#include "types/actor_id.hpp"
-#include "types/fixture.hpp"
-#include "types/item.hpp"
-#include "types/map_id.hpp"
-#include "types/ndarray.hpp"
 #include "types/position.hpp"
 #include "types/stats.hpp"
 
@@ -52,49 +47,55 @@ auto get_data_dir() -> std::filesystem::path {
 };
 
 // Called every frame - render current state
-SDL_AppResult SDL_AppIterate(void*) {
-  g_console.clear();
-  if (g_state) {
-    g_state->on_draw();
+SDL_AppResult SDL_AppIterate(void* appstate) {
+  auto* app = static_cast<GameContext*>(appstate);
+  app->console.clear();
+  if (app->state) {
+    app->state->on_draw(*app);
   }
-  g_context.present(g_console);
+  app->context.present(app->console);
   return SDL_APP_CONTINUE;
 }
 
 // Handle events - delegate to current state
-SDL_AppResult SDL_AppEvent(void*, SDL_Event* event) {
-  if (!g_state) return SDL_APP_CONTINUE;
+SDL_AppResult SDL_AppEvent(void* appstate, SDL_Event* event) {
+  auto* app = static_cast<GameContext*>(appstate);
+  if (!app->state) return SDL_APP_CONTINUE;
 
   // Let the current state handle the event and handle state transitions
-  if (auto result = g_state->on_event(*event); std::holds_alternative<state::Change>(result)) {
-    g_state = std::move(std::get<state::Change>(result).new_state);
+  if (auto result = app->state->on_event(*app, *event); std::holds_alternative<state::Change>(result)) {
+    app->state = std::move(std::get<state::Change>(result).new_state);
   } else if (std::holds_alternative<state::Quit>(result)) {
-    if (g_world) save_world(*g_world);
+    if (app->world) save_world(*app->world);
     return SDL_APP_SUCCESS;
   } else if (std::holds_alternative<state::EndTurn>(result)) {
     // Phase 4: Handle enemy turns after player action
-    g_controller.cursor = std::nullopt;
+    app->controller.cursor = std::nullopt;
 
-    if (g_world && g_world->active_player().stats.hp > 0) {
-      auto& world = *g_world;
+    if (app->world && app->world->active_player().stats.hp > 0) {
+      auto& world = *app->world;
       update_fov(world.active_map(), world.active_player().pos);
-      enemy_turn(world);
+      enemy_turn(*app);
 
       // Check for level up
-      if (g_world->active_player().stats.xp >= next_level_xp(g_world->active_player().stats.level)) {
-        g_state = std::make_unique<state::LevelUp>();
+      if (app->world->active_player().stats.xp >= next_level_xp(app->world->active_player().stats.level)) {
+        app->state = std::make_unique<state::LevelUp>(*app);
       } else {
-        g_state = std::make_unique<state::InGame>();
+        app->state = std::make_unique<state::InGame>();
       }
-    } else if (g_world && g_world->active_player().stats.hp <= 0) {
+    } else if (app->world && app->world->active_player().stats.hp <= 0) {
       // Player died
-      g_state = std::make_unique<state::Dead>();
+      app->state = std::make_unique<state::Dead>();
     }
+  } else if (std::holds_alternative<state::Reset>(result)) {
+    // Reset state (e.g. after LevelUp) -> Go back to InGame usually or stick to current?
+    // LevelUp returns Reset when done.
+    app->state = std::make_unique<state::InGame>();
   }
 
   // Also handle SDL_EVENT_QUIT
   if (event->type == SDL_EVENT_QUIT) {
-    if (g_world) save_world(*g_world);
+    if (app->world) save_world(*app->world);
     return SDL_APP_SUCCESS;
   }
 
@@ -102,7 +103,7 @@ SDL_AppResult SDL_AppEvent(void*, SDL_Event* event) {
 }
 
 // Main entry point
-SDL_AppResult SDL_AppInit(void**, int argc, char** argv) {
+SDL_AppResult SDL_AppInit(void** appstate, int argc, char** argv) {
   auto params = TCOD_ContextParams{};
   params.argc = argc;
   params.argv = argv;
@@ -114,22 +115,22 @@ SDL_AppResult SDL_AppInit(void**, int argc, char** argv) {
   auto tileset = tcod::load_tilesheet(get_data_dir() / "dejavu16x16_gs_tc.png", {32, 8}, tcod::CHARMAP_TCOD);
   params.tileset = tileset.get();
 
+  auto* app = new GameContext();
+  *appstate = app;
+
   // Initialize console with constants
-  g_console = tcod::Console{constants::CONSOLE_WIDTH, constants::CONSOLE_HEIGHT};
-  params.console = g_console.get();
+  app->console = tcod::Console{constants::CONSOLE_WIDTH, constants::CONSOLE_HEIGHT};
+  params.console = app->console.get();
 
-  g_context = tcod::Context(params);
-
-  // Phase 2: Initialize state machine
-  std::cout << "Phase 2: Initializing state machine with MainMenu...\n";
-  g_state = std::make_unique<state::MainMenu>();
-  std::cout << "State machine initialized!\n\n";
+  app->context = tcod::Context(params);
+  app->state = std::make_unique<state::MainMenu>();
 
   return SDL_APP_CONTINUE;
 }
 
 // Called before exiting
-void SDL_AppQuit(void*, SDL_AppResult) {
+void SDL_AppQuit(void* appstate, SDL_AppResult) {
   std::cout << "Shutting down...\n";
-  g_state.reset();  // Clean up state
+  auto* app = static_cast<GameContext*>(appstate);
+  delete app;
 }

@@ -4,6 +4,7 @@
 #include <gsl/gsl>
 
 #include "distance.hpp"
+#include "globals.hpp"
 #include "types/actor.hpp"
 #include "types/world.hpp"
 
@@ -20,7 +21,8 @@ inline auto new_actor(World& world) {
   }
 }
 
-inline auto enemy_turn(World& world) -> void {
+inline auto enemy_turn(GameContext& context) -> void {
+  auto& world = *context.world;
   assert(world.schedule.front() == ActorID{0});
 
   world.schedule.push_back(world.schedule.front());
@@ -36,7 +38,7 @@ inline auto enemy_turn(World& world) -> void {
       continue;
     }
     if (auto& actor = actor_it->second; actor.ai) {
-      const auto result = actor.ai->perform(world, actor);
+      const auto result = actor.ai->perform(context, actor);
       if (std::holds_alternative<action::Failure>(result)) {
         fmt::print("AI failed action: {}\n", std::get<action::Failure>(result).reason);
       } else if (std::holds_alternative<action::Success>(result)) {

@@ -144,21 +144,18 @@ inline auto generate_level(World& world, int level = 1) -> Map& {
 
   auto& map = world.maps[map_id] = Map{WIDTH, HEIGHT};
   world.current_map_id = map.id = map_id;
-  debug_show_map(map);
+
   for (size_t i{}; i < map.tiles.get_container().size(); ++i) {
     map.tiles.get_container().at(i) = (i < map.tiles.get_container().size() * 45 / 100 ? Tiles::wall : Tiles::floor);
   }
 
-  debug_show_map(map);
   shuffle_list(map.tiles.get_container(), world.rng);
-  debug_show_map(map);
+
   for (int repeats{0}; repeats < 5; ++repeats) {
     cave_gen_ca_shuffle_step(world, map);
-    debug_show_map(map);
   }
   with_border(WIDTH, HEIGHT, [&map](int x, int y) { map.tiles.at({x, y}) = Tiles::wall; });
   fill_holes(map);
-  debug_show_map(map);
 
   auto floor_tiles = std::vector<Position>{};
   floor_tiles.reserve(WIDTH * HEIGHT);

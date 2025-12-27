@@ -4,6 +4,7 @@
 
 #include "../combat.hpp"
 #include "../distance.hpp"
+#include "../globals.hpp"
 #include "../item_tools.hpp"
 #include "../states/pick_tile_aoe.hpp"
 #include "../types/actor.hpp"
@@ -21,8 +22,9 @@ struct FireballScroll : public Item {
     return {'#', tcod::ColorRGB{255, 63, 63}};
   }
 
-  [[nodiscard]] action::Result use_item(World& world, Actor& actor) override {
-    auto on_pick = [&world, &actor, this](Position target_pos) {
+  [[nodiscard]] action::Result use_item(GameContext& context, Actor& actor) override {
+    auto on_pick = [&actor, this](GameContext& ctx, Position target_pos) {
+      auto& world = *ctx.world;
       auto target_ids = std::vector<ActorID>{};
       for (auto& target_id : world.active_actors) {
         if (euclidean_squared(world.get(target_id).pos - target_pos) < range_squared)
@@ -40,12 +42,14 @@ struct FireballScroll : public Item {
       return state::EndTurn{};
     };
 
+    auto& world = *context.world;
     const auto& map = world.active_map();
     const auto is_not_self_and_visible = [&actor, &map](const Actor& other) {
       return other.id != actor.id && map.visible.at(other.pos);
     };
     const auto* nearest_visible_enemy = get_nearest_actor(world, actor.pos, is_not_self_and_visible);
-    g_controller.cursor = nearest_visible_enemy ? nearest_visible_enemy->pos : actor.pos;
-    return action::Poll{std::make_unique<state::PickTileAreaOfEffect>(std::move(g_state), on_pick, range_squared)};
+    context.controller.cursor = nearest_visible_enemy ? nearest_visible_enemy->pos : actor.pos;
+    return action::Poll{
+        std::make_unique<state::PickTileAreaOfEffect>(std::move(context.state), on_pick, range_squared)};
   };
 };

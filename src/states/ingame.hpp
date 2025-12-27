@@ -19,27 +19,28 @@
 namespace state {
 class InGame : public State {
  public:
-  auto on_draw() -> void override { render_all(g_console, *g_world); }
+  auto on_draw(GameContext& context) -> void override { render_all(context); }
 
-  auto on_event(SDL_Event& event) -> StateReturnType override {
-    assert(g_world);
-    assert(g_world->schedule.front() == ActorID{0});
+  auto on_event(GameContext& context, SDL_Event& event) -> StateReturnType override {
+    assert(context.world);
+    assert(context.world->schedule.front() == ActorID{0});
 
-    auto& world = *g_world;
+    auto& world = *context.world;
 
     switch (event.type) {
       case SDL_EVENT_KEY_DOWN: {
         switch (event.key.key) {
           case SDLK_G:
-            return do_action(action::Pickup{});
+            return do_action(context, action::Pickup{});
           case SDLK_I:
             return Change{std::make_unique<PickInventory>(
-                std::move(g_state), [](auto item_index) { return do_action(action::UseItem{item_index}); })};
+                std::move(context.state),
+                [](GameContext& ctx, int item_index) { return do_action(ctx, action::UseItem{item_index}); })};
           case SDLK_COMMA:
-            if (event.key.mod & SDL_KMOD_SHIFT) return do_action(action::UseStairs(false));
+            if (event.key.mod & SDL_KMOD_SHIFT) return do_action(context, action::UseStairs(false));
             break;
           case SDLK_PERIOD:
-            if (event.key.mod & SDL_KMOD_SHIFT) return do_action(action::UseStairs(true));
+            if (event.key.mod & SDL_KMOD_SHIFT) return do_action(context, action::UseStairs(true));
             break;
           case SDLK_F2:
             procgen::generate_level(world);
@@ -54,15 +55,15 @@ class InGame : public State {
             break;
         }
         if (auto dir = get_dir_from(event); dir) {
-          return cmd_move(*dir);
+          return cmd_move(context, *dir);
         }
       } break;
       case SDL_EVENT_MOUSE_MOTION:
-        g_context.convert_event_coordinates(event);
-        g_controller.cursor = {static_cast<int>(event.motion.x), static_cast<int>(event.motion.y)};
+        context.context.convert_event_coordinates(event);
+        context.controller.cursor = {static_cast<int>(event.motion.x), static_cast<int>(event.motion.y)};
         break;
       case SDL_EVENT_WINDOW_MOUSE_LEAVE:
-        g_controller.cursor = std::nullopt;
+        context.controller.cursor = std::nullopt;
         break;
       case SDL_EVENT_QUIT:
         return Quit{};
@@ -73,20 +74,23 @@ class InGame : public State {
   }
 
  private:
-  static auto cmd_move(Position dir) -> StateReturnType { return do_action(action::Bump{dir}); }
-  static auto do_action(action::Action& my_action) -> StateReturnType {
-    auto& world = *g_world;
-    return after_action(my_action.perform(world, world.active_player()));
+  static auto cmd_move(GameContext& context, Position dir) -> StateReturnType {
+    return do_action(context, action::Bump{dir});
   }
 
-  static auto do_action(action::Action&& my_action) -> StateReturnType {
-    auto& world = *g_world;
-    return after_action(my_action.perform(world, world.active_player()));
+  static auto do_action(GameContext& context, action::Action& my_action) -> StateReturnType {
+    auto& world = *context.world;
+    return after_action(context, my_action.perform(context, world.active_player()));
   }
 
-  static auto after_action(action::Result result) -> StateReturnType {
+  static auto do_action(GameContext& context, action::Action&& my_action) -> StateReturnType {
+    auto& world = *context.world;
+    return after_action(context, my_action.perform(context, world.active_player()));
+  }
+
+  static auto after_action(GameContext& context, action::Result result) -> StateReturnType {
     if (std::holds_alternative<action::Failure>(result)) {
-      g_world->log.append(std::get<action::Failure>(result).reason);
+      context.world->log.append(std::get<action::Failure>(result).reason);
       return Change{std::make_unique<InGame>()};
     } else if (std::holds_alternative<action::Poll>(result)) {
       return Change{std::move(std::get<action::Poll>(result).new_state)};

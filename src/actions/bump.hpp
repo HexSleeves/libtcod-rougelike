@@ -5,6 +5,7 @@
 
 #include "../combat.hpp"
 #include "../fov.hpp"
+#include "../globals.hpp"
 #include "../types/position.hpp"
 #include "base.hpp"
 
@@ -20,7 +21,8 @@ class Bump : public Action {
     assert(std::abs(dir_.y) <= 1);
   }
 
-  [[nodiscard]] Result perform(World& world, Actor& actor) override {
+  [[nodiscard]] Result perform(GameContext& context, Actor& actor) override {
+    auto& world = *context.world;
     if (dir_ == Position{0, 0}) return Success{};
     const Position dest = actor.pos + dir_;
 

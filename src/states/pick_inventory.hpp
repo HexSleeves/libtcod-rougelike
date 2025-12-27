@@ -11,12 +11,12 @@
 namespace state {
 class PickInventory : public State {
  public:
-  using PickFunction = std::function<StateReturnType(int)>;
+  using PickFunction = std::function<StateReturnType(GameContext&, int)>;
   PickInventory(std::unique_ptr<State> parent, const PickFunction& on_pick)
       : parent_{std::move(parent)}, on_pick_{on_pick} {};
 
-  auto on_event(SDL_Event& event) -> StateReturnType override {
-    assert(g_world);
+  auto on_event(GameContext& context, SDL_Event& event) -> StateReturnType override {
+    assert(context.world);
     switch (event.type) {
       case SDL_EVENT_KEY_DOWN:
         switch (event.key.key) {
@@ -25,7 +25,7 @@ class PickInventory : public State {
           default:
             auto sym = event.key.key;
             if (SDLK_A <= sym && sym <= SDLK_Z) {
-              return on_pick_(sym - SDLK_A);
+              return on_pick_(context, sym - SDLK_A);
             }
             break;
         }
@@ -37,8 +37,8 @@ class PickInventory : public State {
     }
     return {};
   }
-  auto on_draw() -> void override {
-    parent_->on_draw();
+  auto on_draw(GameContext& context) -> void override {
+    parent_->on_draw(context);
     static constexpr auto INVENTORY_WIDTH = 50;
     static constexpr auto INVENTORY_HEIGHT = 28;
     static constexpr auto DECORATION =
@@ -54,10 +54,10 @@ class PickInventory : public State {
         "[a-z]Use Item, [ESC]Cancel",
         tcod::ColorRGB{0, 0, 0},
         tcod::ColorRGB{255, 255, 255});
-    if (g_world->active_player().stats.inventory.size()) {
+    if (context.world->active_player().stats.inventory.size()) {
       int shortcut = 'a';
       int y = 1;
-      for (const auto& item : g_world->active_player().stats.inventory) {
+      for (const auto& item : context.world->active_player().stats.inventory) {
         tcod::print(
             console, {1, y++}, fmt::format("({:c}) {} ({})", shortcut++, item->get_name(), item->count), {}, {});
       }
@@ -65,9 +65,10 @@ class PickInventory : public State {
       tcod::print(console, {1, 1}, "You have no items.", {}, {});
     }
     tcod::blit(
-        g_console,
+        context.console,
         console,
-        {g_console.get_width() / 2 - console.get_width() / 2, g_console.get_height() / 2 - console.get_height() / 2});
+        {context.console.get_width() / 2 - console.get_width() / 2,
+         context.console.get_height() / 2 - console.get_height() / 2});
   }
 
  private:

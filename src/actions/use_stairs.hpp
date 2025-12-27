@@ -1,4 +1,5 @@
 #pragma once
+#include "../globals.hpp"
 #include "../procgen/caves.hpp"
 #include "../types/action.hpp"
 #include "../types/actor.hpp"
@@ -11,7 +12,8 @@ class UseStairs : public Action {
   UseStairs() = default;
   explicit UseStairs(bool downwards) : downwards_{downwards} {}
 
-  [[nodiscard]] Result perform(World& world, Actor& actor) override {
+  [[nodiscard]] Result perform(GameContext& context, Actor& actor) override {
+    auto& world = *context.world;
     assert(&actor == &world.active_player());
     const Map& current_map = world.active_map();
     if (find_fixture_by_name(current_map, downwards_ ? "down stairs" : "up stairs") != actor.pos) {

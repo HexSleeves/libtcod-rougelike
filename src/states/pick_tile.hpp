@@ -9,19 +9,21 @@
 namespace state {
 class PickTile : public State {
  public:
-  using PickFunction = std::function<StateReturnType(Position)>;
+  using PickFunction = std::function<StateReturnType(GameContext&, Position)>;
   PickTile(std::unique_ptr<State> parent, const PickFunction& on_pick)
       : parent_{std::move(parent)}, on_pick_{on_pick} {};
 
-  auto on_event(SDL_Event& event) -> StateReturnType override {
-    assert(g_world);
+  auto on_event(GameContext& context, SDL_Event& event) -> StateReturnType override {
+    assert(context.world);
     if (const auto dir = get_dir_from(event); dir) {
-      if (!g_controller.cursor) g_controller.cursor = g_world->active_player().pos;
-      const auto& map = g_world->active_map();
-      auto new_cursor = *g_controller.cursor + *dir;
-      if (!map.tiles.in_bounds({new_cursor.x, g_controller.cursor->y})) new_cursor.x = g_controller.cursor->x;
-      if (!map.tiles.in_bounds({g_controller.cursor->x, new_cursor.y})) new_cursor.y = g_controller.cursor->y;
-      g_controller.cursor = new_cursor;
+      if (!context.controller.cursor) context.controller.cursor = context.world->active_player().pos;
+      const auto& map = context.world->active_map();
+      auto new_cursor = *context.controller.cursor + *dir;
+      if (!map.tiles.in_bounds({new_cursor.x, context.controller.cursor->y}))
+        new_cursor.x = context.controller.cursor->x;
+      if (!map.tiles.in_bounds({context.controller.cursor->x, new_cursor.y}))
+        new_cursor.y = context.controller.cursor->y;
+      context.controller.cursor = new_cursor;
       return {};
     }
 
@@ -31,7 +33,7 @@ class PickTile : public State {
           case SDLK_RETURN:
           case SDLK_RETURN2:
           case SDLK_KP_ENTER:
-            return on_pick();
+            return on_pick(context);
           case SDLK_ESCAPE:
             return Change{std::move(parent_)};
           default:
@@ -39,14 +41,14 @@ class PickTile : public State {
         }
         break;
       case SDL_EVENT_MOUSE_BUTTON_DOWN:
-        if (event.button.button == 1) return on_pick();
+        if (event.button.button == 1) return on_pick(context);
         break;
       case SDL_EVENT_MOUSE_MOTION:
-        g_context.convert_event_coordinates(event);
-        g_controller.cursor = {static_cast<int>(event.motion.x), static_cast<int>(event.motion.y)};
+        context.context.convert_event_coordinates(event);
+        context.controller.cursor = {static_cast<int>(event.motion.x), static_cast<int>(event.motion.y)};
         break;
       case SDL_EVENT_WINDOW_MOUSE_LEAVE:
-        g_controller.cursor = std::nullopt;
+        context.controller.cursor = std::nullopt;
         break;
       case SDL_EVENT_QUIT:
         return Quit{};
@@ -56,12 +58,12 @@ class PickTile : public State {
     return {};
   }
 
-  auto on_draw() -> void override { render_all(g_console, *g_world); }
+  auto on_draw(GameContext& context) -> void override { render_all(context); }
 
  private:
-  auto on_pick() -> StateReturnType {
-    if (!g_controller.cursor) return Change{std::move(parent_)};
-    return on_pick_(*g_controller.cursor);
+  auto on_pick(GameContext& context) -> StateReturnType {
+    if (!context.controller.cursor) return Change{std::move(parent_)};
+    return on_pick_(context, *context.controller.cursor);
   }
   std::unique_ptr<State> parent_;
   PickFunction on_pick_;
