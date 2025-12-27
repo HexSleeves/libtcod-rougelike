@@ -2,6 +2,7 @@
 #include <fmt/core.h>
 
 #include <gsl/gsl>
+#include <ranges>
 
 #include "distance.hpp"
 #include "globals.hpp"
@@ -83,11 +84,9 @@ inline auto get_nearest_actor(
 
 /// Return a pointer to an Actor at `pos` if it exists.
 inline auto actor_at(World& world, Position pos) -> Actor* {
-  for (auto& actor_id : world.active_actors) {
-    if (world.get(actor_id).pos == pos) return &world.get(actor_id);
-  }
-
-  return nullptr;
+  auto actors = world.active_actors | std::views::transform([&](auto id) { return &world.get(id); });
+  auto it = std::ranges::find_if(actors, [&](auto* a) { return a->pos == pos; });
+  return (it != actors.end()) ? *it : nullptr;
 }
 
 /// Call function (Actor&) -> void on all active actors.

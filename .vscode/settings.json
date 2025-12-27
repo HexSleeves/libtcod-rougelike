@@ -103,5 +103,8 @@
     "xutility": "cpp",
     "fstream": "cpp"
   },
-  "sonarlint.pathToCompileCommands": "${workspaceFolder}/build/compile_commands.json"
+  "sonarlint.pathToCompileCommands": "${workspaceFolder}/build/compile_commands.json",
+  "[cmake]": {
+    "editor.defaultFormatter": "KylinIdeTeam.cmake-intellisence"
+  }
 }
