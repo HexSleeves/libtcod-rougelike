@@ -7,9 +7,12 @@ if(NOT DEFINED CMAKE_TOOLCHAIN_FILE)
 endif()
 
 project(
-    libtcod-vcpkg-template  # Project name, change this as needed.
+    tcod-adventure  # Project name, change this as needed.
     LANGUAGES C CXX
 )
+
+# Generate compile_commands.json for static analysis tools (SonarQube, clangd, etc.)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/bin")  # Keep all runtime files in one directory.
 
@@ -23,6 +26,16 @@ add_executable(${PROJECT_NAME} ${SOURCE_FILES})
 
 # Ensure the C++17 standard is available.
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_17)
+
+# Link filesystem library for C++17 std::filesystem support
+if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    target_link_libraries(${PROJECT_NAME} PRIVATE stdc++fs)
+elseif (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+    # Some Clang setups may need explicit filesystem linking
+    if (NOT APPLE)
+        target_link_libraries(${PROJECT_NAME} PRIVATE c++fs)
+    endif()
+endif()
 
 # Enforce UTF-8 encoding on MSVC.
 if (MSVC)

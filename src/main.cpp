@@ -98,6 +98,7 @@ SDL_AppResult SDL_AppEvent(void*, SDL_Event* event) {
   }
   return SDL_APP_CONTINUE;
 }
+
 // Main entry point
 SDL_AppResult SDL_AppInit(void**, int argc, char** argv) {
   auto params = TCOD_ContextParams{};
