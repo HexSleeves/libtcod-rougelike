@@ -62,9 +62,13 @@ endif()
 
 find_package(SDL3 CONFIG REQUIRED)
 find_package(libtcod CONFIG REQUIRED)
+find_package(nlohmann_json CONFIG REQUIRED)
+find_package(Microsoft.GSL CONFIG REQUIRED)
 target_link_libraries(
     ${PROJECT_NAME}
     PRIVATE
         SDL3::SDL3
         libtcod::libtcod
+        nlohmann_json::nlohmann_json
+        Microsoft.GSL::GSL
 )

@@ -12,6 +12,8 @@
       ]
     },
     "sdl3",
-    "fmt"
+    "fmt",
+    "nlohmann-json",
+    "ms-gsl"
   ]
 }

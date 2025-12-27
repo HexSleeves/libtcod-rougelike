@@ -7,6 +7,16 @@
 #include <iostream>
 #include <libtcod.hpp>
 
+// Phase 1: Include ported types
+#include "constants.hpp"
+#include "types/actor_id.hpp"
+#include "types/fixture.hpp"
+#include "types/item.hpp"
+#include "types/map_id.hpp"
+#include "types/ndarray.hpp"
+#include "types/position.hpp"
+#include "types/stats.hpp"
+
 /// Return the data directory.
 auto get_data_dir() -> std::filesystem::path {
   static auto root_directory = std::filesystem::path{"."};  // Begin at the working directory.
@@ -118,6 +128,38 @@ SDL_AppResult SDL_AppInit(void**, int argc, char** argv) {
   params.console = g_console.get();
 
   g_context = tcod::Context(params);
+
+  // Phase 1: Verify ported types work correctly
+  std::cout << "Phase 1 verification tests:\n";
+
+  // Test Position
+  Position p1{5, 10};
+  Position p2 = p1 + Position{1, 0};
+  std::cout << "  Position: p1({5, 10}) + {1, 0} = p2({" << p2.x << ", " << p2.y << "})\n";
+
+  // Test Array2D
+  util::Array2D<int> test_array{{10, 10}};
+  test_array.at({5, 5}) = 42;
+  std::cout << "  Array2D: test_array[{5, 5}] = " << test_array.at({5, 5}) << "\n";
+
+  // Test MapID
+  MapID map_id{"dungeon", 1};
+  std::cout << "  MapID: {\"" << map_id.name << "\", " << map_id.level << "}\n";
+
+  // Test Stats
+  Stats test_stats{};
+  test_stats.max_hp = 30;
+  test_stats.hp = 25;
+  test_stats.attack = 5;
+  test_stats.defense = 2;
+  std::cout << "  Stats: HP=" << test_stats.hp << "/" << test_stats.max_hp << " ATK=" << test_stats.attack
+            << " DEF=" << test_stats.defense << "\n";
+
+  // Test constants
+  std::cout << "  Constants: CONSOLE_WIDTH=" << constants::CONSOLE_WIDTH << " MAP_HEIGHT=" << constants::MAP_HEIGHT
+            << "\n";
+
+  std::cout << "Phase 1 types verified successfully!\n\n";
 
   return SDL_APP_CONTINUE;
 }
