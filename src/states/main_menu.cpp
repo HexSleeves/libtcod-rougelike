@@ -3,6 +3,11 @@
 #include <SDL3/SDL.h>
 
 #include <iostream>
+#include <memory>
+
+#include "../globals.hpp"
+#include "../world_init.hpp"
+#include "ingame.hpp"
 
 namespace state {
 MainMenu::MainMenu(int selected)
@@ -10,15 +15,14 @@ MainMenu::MainMenu(int selected)
           MenuItems{
               {"[N] New Game",
                []() -> state::Result {
-                 // Phase 3: Will initialize world and change to InGame state
-                 std::cout << "New Game selected (Phase 3 placeholder)\n";
-                 return {};
+                 g_world = new_world();
+                 return state::Change{std::make_unique<state::InGame>()};
                },
                SDLK_N},  // SDL3: uppercase key codes
               {"[C] Continue",
                []() -> state::Result {
-                 // Phase 3: Will load saved game or resume current game
-                 std::cout << "Continue selected (Phase 3 placeholder)\n";
+                 // Phase 6: Will load saved game
+                 if (g_world) return state::Change{std::make_unique<state::InGame>()};
                  return {};
                },
                SDLK_C},  // SDL3: uppercase key codes
