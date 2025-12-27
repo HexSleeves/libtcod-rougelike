@@ -6,6 +6,7 @@
   "words": [
     "autoupdate",
     "BKGND",
+    "blit",
     "buildsystems",
     "buildtrees",
     "CHAINLOAD",
@@ -37,6 +38,7 @@
     "MSVC",
     "mymindstorm",
     "preload",
+    "procgen",
     "pwsh",
     "SDLK",
     "svenstaro",

@@ -2,8 +2,6 @@
 
 #include <SDL3/SDL_events.h>
 
-#include <memory>
-
 #include "state_result.hpp"
 
 namespace state {

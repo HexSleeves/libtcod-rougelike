@@ -2,10 +2,10 @@
 
 #include <SDL3/SDL.h>
 
-#include <iostream>
 #include <memory>
 
 #include "../globals.hpp"
+#include "../serialization.hpp"
 #include "../world_init.hpp"
 #include "ingame.hpp"
 
@@ -21,7 +21,7 @@ MainMenu::MainMenu(int selected)
                SDLK_N},  // SDL3: uppercase key codes
               {"[C] Continue",
                []() -> state::Result {
-                 // Phase 6: Will load saved game
+                 g_world = load_world();
                  if (g_world) return state::Change{std::make_unique<state::InGame>()};
                  return {};
                },

@@ -25,6 +25,19 @@
 #include "types/state.hpp"
 #include "types/state_result.hpp"
 
+// Phase 4: Combat and gameplay
+#include "fov.hpp"
+#include "world_logic.hpp"
+#include "xp.hpp"
+
+// Phase 5: Additional states
+#include "states/dead.hpp"
+#include "states/ingame.hpp"
+#include "states/levelup.hpp"
+
+// Phase 6: Serialization
+#include "serialization.hpp"
+
 /// Return the data directory.
 auto get_data_dir() -> std::filesystem::path {
   static auto root_directory = std::filesystem::path{"."};  // Begin at the working directory.
@@ -52,19 +65,36 @@ SDL_AppResult SDL_AppIterate(void*) {
 SDL_AppResult SDL_AppEvent(void*, SDL_Event* event) {
   if (!g_state) return SDL_APP_CONTINUE;
 
-  // Let the current state handle the event
-  auto result = g_state->on_event(*event);
-
-  // Handle state transitions
-  if (std::holds_alternative<state::Change>(result)) {
+  // Let the current state handle the event and handle state transitions
+  if (auto result = g_state->on_event(*event); std::holds_alternative<state::Change>(result)) {
     g_state = std::move(std::get<state::Change>(result).new_state);
   } else if (std::holds_alternative<state::Quit>(result)) {
+    if (g_world) save_world(*g_world);
     return SDL_APP_SUCCESS;
+  } else if (std::holds_alternative<state::EndTurn>(result)) {
+    // Phase 4: Handle enemy turns after player action
+    g_controller.cursor = std::nullopt;
+
+    if (g_world && g_world->active_player().stats.hp > 0) {
+      auto& world = *g_world;
+      update_fov(world.active_map(), world.active_player().pos);
+      enemy_turn(world);
+
+      // Check for level up
+      if (g_world->active_player().stats.xp >= next_level_xp(g_world->active_player().stats.level)) {
+        g_state = std::make_unique<state::LevelUp>();
+      } else {
+        g_state = std::make_unique<state::InGame>();
+      }
+    } else if (g_world && g_world->active_player().stats.hp <= 0) {
+      // Player died
+      g_state = std::make_unique<state::Dead>();
+    }
   }
-  // Handle other result types (Reset, EndTurn) in future phases
 
   // Also handle SDL_EVENT_QUIT
   if (event->type == SDL_EVENT_QUIT) {
+    if (g_world) save_world(*g_world);
     return SDL_APP_SUCCESS;
   }
 

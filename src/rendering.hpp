@@ -107,7 +107,7 @@ inline void draw_bar(
   if (text.size()) tcod::print_rect(console, {x, y, width, 1}, text, text_color, {}, alignment);
 }
 
-inline void render_mouse_look(tcod::Console& console, const World& world) {
+inline void render_mouse_look([[maybe_unused]] tcod::Console& console, const World& world) {
   if (!g_controller.cursor) return;
 
   const auto& map = world.active_map();
@@ -182,7 +182,6 @@ inline void main_redraw() {
 
 inline auto debug_show_map([[maybe_unused]] const Map& map) -> void {
 #ifndef NDEBUG
-  static int n = 0;
   render_map(g_console, map, true);
   g_context.present(g_console);
   SDL_Delay(100);

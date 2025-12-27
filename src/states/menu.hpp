@@ -14,7 +14,7 @@ class Menu : public State {
   struct Item {
     std::string name;  // The displayed text of this item.
     std::function<StateReturnType()> on_pick;  // The callback for when this item is picked.
-    SDL_Keycode key = 0;  // The SDL_KeyCode to use as the hotkey for this item.
+    int key = 0;  // The SDL_KeyCode to use as the hotkey for this item.
   };
 
   using MenuItems = std::vector<Item>;
@@ -56,7 +56,7 @@ class Menu : public State {
 
   auto handle_mouse_motion(SDL_Event& event) -> StateReturnType {
     g_context.convert_event_coordinates(event);
-    selected_ = event.motion.y - menu_pos_.y;
+    selected_ = static_cast<int>(event.motion.y) - menu_pos_.y;
     return {};
   }
 
@@ -87,7 +87,7 @@ class Menu : public State {
     return {};
   }
 
-  auto handle_hotkey_selection(SDL_Keycode key) -> StateReturnType {
+  auto handle_hotkey_selection(int key) -> StateReturnType {
     for (size_t i{0}; i < items_.size(); ++i) {
       if (items_.at(i).key && items_.at(i).key == key) {
         selected_ = gsl::narrow<int>(i);

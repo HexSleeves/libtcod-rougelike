@@ -1,8 +1,12 @@
 #pragma once
+#include "action_result.hpp"
+#include "actor_fwd.hpp"
+#include "world_fwd.hpp"
 
-// Phase 3 stub - will be replaced with full version in Phase 4
 namespace action {
-struct Action {
+class Action {
+ public:
   virtual ~Action() = default;
+  [[nodiscard]] virtual Result perform(World& world, Actor& actor) = 0;
 };
 }  // namespace action
