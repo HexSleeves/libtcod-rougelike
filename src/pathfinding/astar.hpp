@@ -4,6 +4,7 @@
 
 #include "../types/ndarray.hpp"
 #include "map.hpp"
+#include "pathfinding.hpp"
 
 namespace pf {
 [[nodiscard]] inline auto setup_heuristic(

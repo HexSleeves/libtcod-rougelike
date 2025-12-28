@@ -6,14 +6,12 @@
 #include <random>
 
 #include "../actions/ai_basic.hpp"
-#include "../constants.hpp"
 #include "../fov.hpp"
 #include "../items/health_potion.hpp"
 #include "../items/scroll_confusion.hpp"
 #include "../items/scroll_fireball.hpp"
 #include "../items/scroll_lightning.hpp"
 #include "../maptools.hpp"
-#include "../rendering.hpp"
 #include "../types/map.hpp"
 #include "../types/ndarray.hpp"
 #include "../types/world.hpp"
@@ -80,7 +78,7 @@ inline void cave_gen_ca_shuffle_step(World& world, Map& map) {
   shuffle_tiles(world, map, shuffle_space);
 }
 
-inline auto map_label(util::Array2D<bool> tiles) -> std::tuple<util::Array2D<int>, int> {
+inline auto map_label(util::Array2D<signed char> tiles) -> std::tuple<util::Array2D<int>, int> {
   auto labels = util::Array2D<int>{tiles.get_shape(), 0};
   auto label_count = int{0};
 
@@ -103,8 +101,8 @@ inline auto map_label(util::Array2D<bool> tiles) -> std::tuple<util::Array2D<int
 }
 
 inline auto fill_holes(Map& map) -> void {
-  auto is_floor = util::Array2D<bool>{map.tiles.get_shape()};
-  std::transform(map.tiles.begin(), map.tiles.end(), is_floor.begin(), [](auto t) { return t == Tiles::floor; });
+  auto is_floor = util::Array2D<signed char>{map.tiles.get_shape()};
+  std::ranges::transform(map.tiles, is_floor.begin(), [](auto t) { return t == Tiles::floor; });
 
   util::Array2D<int> labels;
   int label_n;
@@ -112,11 +110,10 @@ inline auto fill_holes(Map& map) -> void {
   std::vector<ptrdiff_t> label_sizes;
   label_sizes.reserve(label_n);
   for (int i{0}; i < label_n; ++i) {
-    label_sizes.emplace_back(std::count(labels.begin(), labels.end(), i + 1));
+    label_sizes.emplace_back(std::ranges::count(labels, i + 1));
   }
 
-  const auto biggest_label =
-      gsl::narrow<int>(std::max_element(label_sizes.begin(), label_sizes.end()) - label_sizes.begin()) + 1;
+  const auto biggest_label = gsl::narrow<int>(std::ranges::max_element(label_sizes) - label_sizes.begin()) + 1;
 
   with_indexes(labels, [&labels, biggest_label, &map](int x, int y) {
     if (labels.at({x, y}) && labels.at({x, y}) != biggest_label) {
@@ -180,9 +177,7 @@ inline auto generate_level(World& world, int level = 1) -> Map& {
   }
 
   // Remove tiles in FOV.
-  floor_tiles.erase(
-      std::remove_if(floor_tiles.begin(), floor_tiles.end(), [&](Position pos) { return map.visible.at(pos); }),
-      floor_tiles.end());
+  std::erase_if(floor_tiles, [&map](Position pos) { return map.visible.at(pos); });
 
   for (int repeats{0}; repeats < 20; ++repeats) {
     auto& [monster_id, monster] = *new_actor(world);

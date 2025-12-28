@@ -3,6 +3,7 @@
 
 #include "../types/ndarray.hpp"
 #include "map.hpp"
+#include "pathfinding.hpp"
 
 namespace pf {
 [[nodiscard]] inline auto setup_heuristic(const util::Array2D<int>& dist) {

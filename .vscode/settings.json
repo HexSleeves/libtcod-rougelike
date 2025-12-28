@@ -106,5 +106,9 @@
   "sonarlint.pathToCompileCommands": "${workspaceFolder}/build/compile_commands.json",
   "[cmake]": {
     "editor.defaultFormatter": "KylinIdeTeam.cmake-intellisence"
+  },
+  "sonarlint.connectedMode.project": {
+    "connectionId": "hexsleeves",
+    "projectKey": "HexSleeves_libtcod-rougelike"
   }
 }

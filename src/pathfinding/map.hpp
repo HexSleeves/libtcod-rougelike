@@ -4,7 +4,6 @@
 #include "../maptools.hpp"
 #include "../types/ndarray.hpp"
 #include "../types/position.hpp"
-#include "pathfinding.hpp"
 
 namespace pf {
 using Index2 = Position;  // 2D coordinates.
@@ -58,7 +57,7 @@ using Index2 = Position;  // 2D coordinates.
   auto path = std::vector<Index2>{};
   path.emplace_back(start);
   while (path.back() != flow.at(path.back())) {
-    assert(std::find(path.begin(), path.end(), flow.at(path.back())) == path.end());  // Recursion check.
+    assert(std::ranges::find(path, flow.at(path.back())) == path.end());  // Recursion check.
     path.emplace_back(flow.at(path.back()));
   }
   return path;

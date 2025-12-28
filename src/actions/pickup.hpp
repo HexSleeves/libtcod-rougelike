@@ -15,10 +15,9 @@ class Pickup : public Action {
       return Failure{"Nothing to pickup!"};
     }
     auto& item = first->second;
-    auto stack_item =
-        std::find_if(actor.stats.inventory.begin(), actor.stats.inventory.end(), [&](auto& inventory_item) {
-          return inventory_item->get_name() == item->get_name();
-        });
+    auto stack_item = std::ranges::find_if(actor.stats.inventory, [&](const auto& inventory_item) {
+      return inventory_item->get_name() == item->get_name();
+    });
 
     // Take or stack the item.
     world.log.append(fmt::format("You take the {}.", item->get_name()));

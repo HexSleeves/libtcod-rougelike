@@ -6,6 +6,7 @@
 #include <filesystem>
 #include <iostream>
 #include <libtcod.hpp>
+#include <memory>
 #include <variant>
 
 // Phase 1: Core types
@@ -116,8 +117,7 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char** argv) {
   auto tileset = tcod::load_tilesheet(get_data_dir() / "dejavu16x16_gs_tc.png", {32, 8}, tcod::CHARMAP_TCOD);
   params.tileset = tileset.get();
 
-  auto* app = new GameContext();
-  *appstate = app;
+  auto app = std::make_unique<GameContext>();
 
   // Initialize console with constants
   app->console = tcod::Console{constants::CONSOLE_WIDTH, constants::CONSOLE_HEIGHT};
@@ -126,12 +126,13 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char** argv) {
   app->context = tcod::Context(params);
   app->state = std::make_unique<state::MainMenu>();
 
+  *appstate = app.release();
+
   return SDL_APP_CONTINUE;
 }
 
 // Called before exiting
 void SDL_AppQuit(void* appstate, SDL_AppResult) {
   std::cout << "Shutting down...\n";
-  auto* app = static_cast<GameContext*>(appstate);
-  delete app;
+  auto app = std::unique_ptr<GameContext>(static_cast<GameContext*>(appstate));
 }

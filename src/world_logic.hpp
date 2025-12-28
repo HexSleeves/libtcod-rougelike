@@ -30,7 +30,7 @@ inline auto enemy_turn(GameContext& context) -> void {
   world.schedule.pop_front();
 
   int safety_count = 0;
-  while (world.schedule.front() != ActorID{0} && world.actors.find(ActorID{0}) != world.actors.end()) {
+  while (world.schedule.front() != ActorID{0} && world.actors.contains(ActorID{0})) {
     if (++safety_count > 1000) {
       fmt::print("Warning: Enemy turn loop exceeded 1000 iterations. Breaking to prevent hang.\n");
       break;
@@ -89,7 +89,7 @@ inline auto get_nearest_actor(
 
 /// Return a pointer to an Actor at `pos` if it exists.
 inline auto actor_at(World& world, Position pos) -> Actor* {
-  auto actors = world.active_actors | std::views::transform([&](auto id) { return &world.get(id); });
+  auto actors = world.active_actors | std::views::transform([&world](auto id) { return &world.get(id); });
   auto it = std::ranges::find_if(actors, [&](auto* a) { return a->pos == pos; });
   return (it != actors.end()) ? *it : nullptr;
 }
