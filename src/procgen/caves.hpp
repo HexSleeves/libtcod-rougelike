@@ -195,6 +195,7 @@ inline auto generate_level(World& world, int level = 1) -> Map& {
     monster.stats.xp = 35;
     monster.ai = std::make_unique<action::BasicAI>();
     world.schedule.push_back(monster_id);
+    world.active_actors.insert(monster_id);
   }
   for (int repeats{0}; repeats < 4; ++repeats) {
     auto& [monster_id, monster] = *new_actor(world);
@@ -208,6 +209,7 @@ inline auto generate_level(World& world, int level = 1) -> Map& {
     monster.stats.xp = 100;
     monster.ai = std::make_unique<action::BasicAI>();
     world.schedule.push_back(monster_id);
+    world.active_actors.insert(monster_id);
   }
 
   map.fixtures[pop_random(floor_tiles, world.rng)] = Fixture{"down stairs", '>'};

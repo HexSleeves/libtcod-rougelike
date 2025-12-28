@@ -11,9 +11,14 @@
 #include "xp.hpp"
 
 inline void render_map(tcod::Console& console, const Map& map, bool show_all = false) {
-  for (int y{0}; y < map.get_height(); ++y) {
-    for (int x{0}; x < map.get_width(); ++x) {
-      if (!console.in_bounds({x, y})) continue;
+  const int x_min = 0;
+  const int x_max = std::min(console.get_width(), map.get_width());
+  const int y_min = 0;
+  const int y_max = std::min(console.get_height(), map.get_height());
+
+  for (int y{y_min}; y < y_max; ++y) {
+    for (int x{x_min}; x < x_max; ++x) {
+      // Bounds check removed due to pre-calculated loops.
       if (!show_all && !map.explored.at({x, y})) continue;
       console.at({x, y}) = map.tiles.at({x, y}) == Tiles::floor
                                ? TCOD_ConsoleTile{'.', tcod::ColorRGB{128, 128, 128}, tcod::ColorRGB{0, 0, 0}}

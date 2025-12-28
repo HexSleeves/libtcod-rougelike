@@ -81,7 +81,8 @@ SDL_AppResult SDL_AppEvent(void* appstate, SDL_Event* event) {
       if (app->world->active_player().stats.xp >= next_level_xp(app->world->active_player().stats.level)) {
         app->state = std::make_unique<state::LevelUp>(*app);
       } else {
-        app->state = std::make_unique<state::InGame>();
+        // Optimization: Keep the current InGame state active.
+        // app->state = std::make_unique<state::InGame>();
       }
     } else if (app->world && app->world->active_player().stats.hp <= 0) {
       // Player died

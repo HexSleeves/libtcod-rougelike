@@ -29,7 +29,12 @@ inline auto enemy_turn(GameContext& context) -> void {
   world.schedule.push_back(world.schedule.front());
   world.schedule.pop_front();
 
+  int safety_count = 0;
   while (world.schedule.front() != ActorID{0} && world.actors.find(ActorID{0}) != world.actors.end()) {
+    if (++safety_count > 1000) {
+      fmt::print("Warning: Enemy turn loop exceeded 1000 iterations. Breaking to prevent hang.\n");
+      break;
+    }
     auto actor_id = world.schedule.front();
     world.schedule.pop_front();
     auto actor_it = world.actors.find(actor_id);

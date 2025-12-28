@@ -4,9 +4,7 @@
 #include <cassert>
 #include <gsl/gsl>
 
-#include "../combat.hpp"
 #include "../globals.hpp"
-#include "base.hpp"
 
 namespace action {
 class UseItem : public Action {

@@ -91,7 +91,7 @@ class InGame : public State {
   static auto after_action(GameContext& context, action::Result result) -> StateReturnType {
     if (std::holds_alternative<action::Failure>(result)) {
       context.world->log.append(std::get<action::Failure>(result).reason);
-      return Change{std::make_unique<InGame>()};
+      return {};
     } else if (std::holds_alternative<action::Poll>(result)) {
       return Change{std::move(std::get<action::Poll>(result).new_state)};
     } else if (std::holds_alternative<action::Success>(result)) {
